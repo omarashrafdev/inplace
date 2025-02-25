@@ -1,0 +1,56 @@
+
+version: "3"
+
+services:
+
+  backend:
+    container_name: inplace_local_backend
+    build:
+      context: ./backend
+    depends_on:
+      - db
+    ports:
+      - "3000:3000"
+    volumes:
+      - "./backend/:/app/"
+    networks:
+      - my_network
+
+  db:
+    container_name: inplace_local_db
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=database
+    ports:
+      - "5432:5432"
+    volumes:
+      - inplace_db_data:/var/lib/postgresql/data
+    networks:
+      - my_network
+
+  mailhog:
+    container_name: inplace_local_mail
+    image: mailhog/mailhog
+    ports:
+      - "1025:1025"  # SMTP port
+      - "8025:8025"  # Web UI port
+    networks:
+      - my_network
+
+  mkdocs:
+    container_name: inplace_local_docs
+    image: squidfunk/mkdocs-material
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./docs:/docs
+
+networks:
+  my_network:
+    driver: bridge
+
+volumes:
+  inplace_db_data: {}
