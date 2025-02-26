@@ -3,7 +3,7 @@ const publicOffersRouter = require("express").Router();
 const joi = require("joi");
 
 const { defineRoute } = require("../core/define_route");
-const { NotFoundError, InternalServerError } = require("../core/errors");
+const { NotFoundError, InternalServerError, ForbiddenError } = require("../core/errors");
 const { Offer, OFFER_TYPE_ENUM } = require("./models");
 const { Like } = require("../likes/models");
 const { upload } = require("./../core/middlewares");
@@ -18,10 +18,18 @@ defineRoute({
 	feature: FEATURE,
 	path: "/all",
 	method: "get",
-	description: "list all offers",
+	description: "List all offers with pagination",
 	handler: async (req, res) => {
-		let offers = await Offer.findAll();
-		offers = await Promise.all(
+		const limit = parseInt(req.query.limit) || 10;
+		const page = parseInt(req.query.page) || 1;
+		const offset = (page - 1) * limit;
+		
+		const { rows: offers, count: totalOffers } = await Offer.findAndCountAll({
+			limit,
+			offset
+		});
+
+		const enrichedOffers = await Promise.all(
 			offers.map(async (offer) => {
 				const likes = await Like.findAll({
 					where: { offerId: offer.id }
@@ -29,13 +37,17 @@ defineRoute({
 				return {
 					...offer.toJSON(),
 					likes: likes.length,
-					is_liked: likes
-						.map((like) => like.userId)
-						.includes(req.userId)
+					is_liked: likes.map((like) => like.userId).includes(req.userId)
 				};
 			})
 		);
-		res.json(offers);
+
+		res.json({
+			totalOffers,
+			currentPage: page,
+			totalPages: Math.ceil(totalOffers / limit),
+			offers: enrichedOffers
+		});
 	}
 });
 
@@ -66,19 +78,27 @@ defineRoute({
 	feature: FEATURE,
 	path: "/search/",
 	method: "get",
-	description: "search for offers",
+	description: "Search for offers with pagination",
 	handler: async (req, res) => {
 		const { query } = req.query;
-		let offers = await Offer.findAll({
+		console.log(query);
+		const limit = parseInt(req.query.limit) || 10;
+		const page = parseInt(req.query.page) || 1;
+		const offset = (page - 1) * limit;
+
+		const { rows: offers, count: totalOffers } = await Offer.findAndCountAll({
 			where: {
 				[Op.or]: [
 					{ title: { [Op.iLike]: `%${query}%` } },
 					{ description: { [Op.iLike]: `%${query}%` } },
 					{ appliances: { [Op.iLike]: `%${query}%` } }
 				]
-			}
+			},
+			limit,
+			offset
 		});
-		offers = await Promise.all(
+
+		const enrichedOffers = await Promise.all(
 			offers.map(async (offer) => {
 				const likes = await Like.findAll({
 					where: { offerId: offer.id }
@@ -86,15 +106,20 @@ defineRoute({
 				return {
 					...offer.toJSON(),
 					likes: likes.length,
-					is_liked: likes
-						.map((like) => like.userId)
-						.includes(req.userId)
+					is_liked: likes.map((like) => like.userId).includes(req.userId)
 				};
 			})
 		);
-		res.json(offers);
+
+		res.json({
+			totalOffers,
+			currentPage: page,
+			totalPages: Math.ceil(totalOffers / limit),
+			offers: enrichedOffers
+		});
 	}
 });
+
 
 const addOfferSchema = joi.object({
 	title: joi.string().required().max(50),
@@ -146,6 +171,62 @@ defineRoute({
 		res.json(offer);
 	}
 });
+
+
+const updateOfferSchema = joi.object({
+	title: joi.string().max(50),
+	description: joi.string().allow(""),
+	longitude: joi.number().min(-180).max(180),
+	latitude: joi.number().min(-90).max(90),
+	area: joi.number(),
+	offerType: joi.string().valid(...OFFER_TYPE_ENUM),
+	offerPrice: joi.number(),
+	isFurnished: joi.boolean(),
+	floorNumber: joi.number().integer(),
+	roomCount: joi.number().integer(),
+	bathroomCount: joi.number().integer(),
+	bedCount: joi.number().integer(),
+	images: joi.array().items(joi.string()),
+	appliances: joi.string().allow(""),
+	notes: joi.string()
+});
+defineRoute({
+	router: privateOffersRouter,
+	feature: FEATURE,
+	path: "/update/:id",
+	method: "patch",
+	description: "Update an existing offer",
+	inputSchema: updateOfferSchema,
+	middlewares: [upload.array("images")],
+	handler: async (req, res) => {
+		const { id } = req.params;
+		const offer = await Offer.findByPk(id);
+
+		if (!offer) throw new NotFoundError("Offer not found!");
+		if (offer.userId !== req.userId)
+			throw new ForbiddenError("You can only update your own offers!");
+
+		let imageUrls = offer.images || [];
+
+		if (req.files && req.files.length > 0) {
+			const imageUploadTasks = req.files.map(async (file) => {
+				file.originalname = Date.now() + "__" + file.originalname;
+				const preProcessedBuffer = await preprocessBuffer(file.buffer);
+				const result = await uploadBuffer(preProcessedBuffer);
+				return result.secure_url;
+			});
+			imageUrls = await Promise.all(imageUploadTasks);
+		}
+
+		await offer.update({
+			...req.body,
+			images: imageUrls
+		});
+
+		res.json(offer);
+	}
+});
+
 
 defineRoute({
 	router: privateOffersRouter,
