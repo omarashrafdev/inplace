@@ -15,12 +15,24 @@ function verificationEmail(email, verificationToken) {
 	};
 }
 
+const generateAuthorizationToken = (userId) => {
+	return jwt.sign({ userId }, process.env.JWT_AUTHORIZATION_PRIVATE_KEY, {
+		expiresIn: "60m",
+	});
+};
+
+const generateRefreshToken = (userId) => {
+	return jwt.sign({ userId }, process.env.JWT_VERIFICATION_PRIVATE_KEY, {
+		expiresIn: "7d",
+	});
+};
+
+const verifyRefreshToken = (token) => {
+	return jwt.verify(token, process.env.JWT_VERIFICATION_PRIVATE_KEY);
+};
+
 function generateVerificationToken(userId) {
 	return jwt.sign({ userId }, process.env.JWT_VERIFICATION_PRIVATE_KEY);
-}
-
-function generateAuthorizationToken(userId) {
-	return jwt.sign({ userId }, process.env.JWT_AUTHORIZATION_PRIVATE_KEY);
 }
 
 function decodeVerificationToken(token) {
@@ -44,6 +56,8 @@ async function compareHash(plain, hash) {
 module.exports = {
 	verificationEmail,
 	generateVerificationToken,
+	generateRefreshToken,
+	verifyRefreshToken,
 	generateAuthorizationToken,
 	decodeVerificationToken,
 	decodeAuthorizationToken,

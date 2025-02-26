@@ -6,10 +6,13 @@ const { sendMail } = require("../core/mailer");
 const { ForbiddenError } = require("../core/errors");
 
 const { User } = require("../users/models");
+const { RevokedToken } = require("./models");
 const { VerificationToken } = require("./models");
 const {
 	verificationEmail,
 	generateVerificationToken,
+	generateRefreshToken,
+	verifyRefreshToken,
 	decodeVerificationToken,
 	generateAuthorizationToken,
 	hash,
@@ -17,6 +20,7 @@ const {
 } = require("./utils");
 
 const FEATURE = "auth";
+
 
 const registerSchema = joi.object({
 	first_name: joi.string().required(),
@@ -71,6 +75,7 @@ defineRoute({
 	}
 });
 
+
 defineRoute({
 	router: authRouter,
 	feature: FEATURE,
@@ -112,6 +117,7 @@ defineRoute({
 	}
 });
 
+
 const loginSchema = joi.object({
 	email: joi.string().email().required(),
 	password: joi.string().required()
@@ -126,13 +132,58 @@ defineRoute({
 	handler: async (req, res) => {
 		const { email, password } = req.body;
 		const user = await User.findOne({ where: { email } });
-		if (!user || !(await compareHash(password, user.password)))
-			throw new ForbiddenError("invalid Email or password!");
-		const token = generateAuthorizationToken(user.id);
-		res.json({
-			token,
-			user
-		});
+
+		if (!user || !(await compareHash(password, user.password))) {
+			throw new ForbiddenError("Invalid Email or Password!");
+		}
+
+		const accessToken = generateAuthorizationToken(user.id);
+		const refreshToken = generateRefreshToken(user.id);
+
+		res.json({ accessToken, refreshToken, user });
+	}
+});
+
+
+defineRoute({
+	router: authRouter,
+	feature: FEATURE,
+	path: "/logout",
+	method: "post",
+	description: "Logout the user",
+	handler: async (req, res) => {
+		const token = req.headers["x-auth-token"];
+		if (!token) throw new ForbiddenError("No token provided");
+
+		await RevokedToken.create({ token });
+		res.status(200).send("Logged out successfully");
+	}
+});
+
+
+const refreshSchema = joi.object({
+	refreshToken: joi.string().required()
+});
+defineRoute({
+	router: authRouter,
+	feature: FEATURE,
+	path: "/refresh",
+	method: "post",
+	description: "Refresh access token",
+	inputSchema: refreshSchema,
+	handler: async (req, res) => {
+		const { refreshToken } = req.body;
+		if (!refreshToken) throw new ForbiddenError("No refresh token provided");
+
+		let userId;
+		try {
+			userId = verifyRefreshToken(refreshToken);
+		} catch (err) {
+			throw new ForbiddenError("Invalid refresh token");
+		}
+
+		const newAccessToken = generateAuthorizationToken(userId);
+		res.json({ accessToken: newAccessToken });
 	}
 });
 
