@@ -41,12 +41,13 @@ defineRoute({
 	}
 });
 
+
 defineRoute({
 	router: likesRouter,
 	feature: FEATURE,
-	path: "/unlike/:offerId",
+	path: "/dislike/:offerId",
 	method: "delete",
-	description: "Unlike a offer",
+	description: "Dislike a offer",
 	handler: async (req, res) => {
 		const offerId = req.params.offerId;
 		const offer = await Offer.findByPk(offerId);
@@ -65,6 +66,27 @@ defineRoute({
 		res.json(like);
 	}
 });
+
+
+defineRoute({
+	router: likesRouter,
+	feature: FEATURE,
+	path: "/status/:offerId",
+	method: "get",
+	description: "Check if the logged-in user liked an offer",
+	handler: async (req, res) => {
+		const offerId = req.params.offerId;
+		const like = await Like.findOne({
+			where: {
+				userId: req.userId,
+				offerId: offerId
+			}
+		});
+
+		res.json({ liked: !!like });
+	}
+});
+
 
 defineRoute({
 	router: likesRouter,
@@ -89,19 +111,23 @@ defineRoute({
 	feature: FEATURE,
 	path: "/list/:offerId",
 	method: "get",
-	description: "List all users that liked an offer",
+	description: "List all users that liked an offer and return the like count",
 	handler: async (req, res) => {
 		const offerId = req.params.offerId;
 		const offer = await Offer.findByPk(offerId);
-		Abdo - 2002;
 		if (!offer) throw new NotFoundError("Offer Not Found");
-		const userIDs = (
-			await Like.findAll({ where: { offerId: offerId } })
-		).map((like) => like.userId);
+
+		const likes = await Like.findAll({ where: { offerId: offerId } });
+		const userIDs = likes.map((like) => like.userId);
+
 		const users = await User.findAll({
 			where: { id: { [Op.in]: userIDs } }
 		});
-		res.json(users);
+
+		res.json({
+			count: likes.length,
+			users
+		});
 	}
 });
 
