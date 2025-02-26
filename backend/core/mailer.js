@@ -1,5 +1,6 @@
 const nodemailer = require("nodemailer");
 
+// For local development only
 const transporter = nodemailer.createTransport({
 	host: process.env.MAIL_APP_HOST || "mailhog",
 	port: 1025,

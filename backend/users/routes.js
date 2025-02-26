@@ -12,6 +12,21 @@ const userRouter = require("express").Router();
 
 const FEATURE = "users";
 
+
+defineRoute({
+	router: userRouter,
+	feature: FEATURE,
+	path: "/me",
+	method: "get",
+	description: "Get logged-in user's details",
+	handler: async (req, res) => {
+		const user = await User.findByPk(req.userId);
+		if (!user) throw new NotFoundError("User not found");
+		res.json(user);
+	}
+});
+
+
 defineRoute({
 	router: userRouter,
 	feature: FEATURE,
@@ -76,5 +91,6 @@ defineRoute({
 		res.json(user);
 	}
 });
+
 
 module.exports = { userRouter };

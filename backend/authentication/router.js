@@ -118,6 +118,31 @@ defineRoute({
 });
 
 
+defineRoute({
+	router: authRouter,
+	feature: FEATURE,
+	path: "/resend-verification",
+	method: "post",
+	description: "Resend account verification email",
+	handler: async (req, res) => {
+		console.log(req.userId);
+		const user = await User.findByPk(req.userId);
+		if (!user) throw new NotFoundError("User not found");
+
+		if (user.is_verified) throw new ForbiddenError("User is already verified");
+
+		const verificationToken = await VerificationToken.create({
+			content: generateVerificationToken(user.id)
+		});
+		await sendMail(
+			verificationEmail(user.email, verificationToken)
+		);
+		
+		res.json({ message: "Verification email sent successfully" });
+	}
+});
+
+
 const loginSchema = joi.object({
 	email: joi.string().email().required(),
 	password: joi.string().required()
