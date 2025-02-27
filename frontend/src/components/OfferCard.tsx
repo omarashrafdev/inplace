@@ -2,7 +2,14 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { HumanReadableDate } from "@/lib/date";
 import { Bath, Bed, Ruler, SwatchBook, Star } from "lucide-react";
 import { Link } from "react-router-dom";
-export function OfferCard({ offer }: any) {
+import { Offer } from "@/lib/types";
+
+interface OfferCardProps {
+    offer: Offer;
+}
+
+export function OfferCard({ offer }: OfferCardProps) {
+
     return (
         <Link to={`/offers/${offer.id}`}>
             <Card className="relative" >

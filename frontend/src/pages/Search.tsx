@@ -3,11 +3,12 @@ import { Search } from "lucide-react";
 import { OffersPage } from "./Offers";
 import { useEffect, useState } from "react";
 import { LoadingSpinner } from "@/components/Spinner";
+import { Offer } from "@/lib/types";
 
 export function SearchPage() {
-    const [query, setQuery] = useState<any>("")
-    const [loading, setLoading] = useState(false)
-    const [offers, setOffers] = useState<any>([])
+    const [query, setQuery] = useState<string>("")
+    const [loading, setLoading] = useState<boolean>(false)
+    const [offers, setOffers] = useState<Offer[]>([])
     useEffect(() => {
         setLoading(true)
         fetch(import.meta.env.VITE_API_URL + "/offers/search?query=" + query, {
@@ -16,7 +17,7 @@ export function SearchPage() {
             }
         }).then(res => res.json()).then(data => {
             setLoading(false)
-            setOffers(data)
+            setOffers(data.offers)
         }
         )
     }, [query])

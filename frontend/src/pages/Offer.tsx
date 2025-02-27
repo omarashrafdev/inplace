@@ -4,14 +4,15 @@ import { OfferDetails } from "@/components/OfferDetails";
 import { MessageCircle, Phone, Trash, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { Offer, User } from "@/lib/types";
 
 export function OfferPage() {
     const navigate = useNavigate()
     const { user: authUser } = useAuth();
-    const [ offer, setOffer ] = useState<any>({})
-    const [ user, setUser ] = useState<any>({})
-    const [ isLiked, setIsLiked ] = useState<any>(false);
-    const [ isSaveDisabled, setIsSaveDisabled ] = useState<any>(false);
+    const [ offer, setOffer ] = useState<Offer>({})
+    const [ user, setUser ] = useState<User>({})
+    const [ isLiked, setIsLiked ] = useState<boolean>(false);
+    const [ isSaveDisabled, setIsSaveDisabled ] = useState<boolean>(false);
     
     const offerID = useParams().id
     const token = localStorage.getItem("token");
@@ -30,8 +31,8 @@ export function OfferPage() {
         )
     }
 
-    function deleteOffer(id: any) {
-        let deleteOffer = confirm("Are you sure you want to delete this offer?")
+    function deleteOffer(id: number) {
+        const deleteOffer = confirm("Are you sure you want to delete this offer?")
         if (!deleteOffer) {
             return
         }
@@ -47,7 +48,7 @@ export function OfferPage() {
 
     }
 
-    async function like(id: any) {
+    async function like(id: number) {
         setIsSaveDisabled(() => true);
         fetch(import.meta.env.VITE_API_URL + "/likes/like/" + id, {
             method: "POST",
@@ -61,7 +62,7 @@ export function OfferPage() {
         });
     }
 
-    async function unlike(id: any) {
+    async function unlike(id: number) {
         setIsSaveDisabled(() => true);
         fetch(import.meta.env.VITE_API_URL + "/likes/unlike/" + id, {
             method: "DELETE",
@@ -100,8 +101,8 @@ export function OfferPage() {
                 <OfferDetails offer={offer} />
                 
                 <div className="flex flex-col gap-3 contact border border-2 rounded p-5 col-span-2">
-                    {(authUser?.id != offer?.user?.id) && <p>Get in touch with {user.first_name} {user.last_name} </p>}
-                    {(authUser?.id != offer?.user?.id) && user.phone_number &&
+                    {(authUser?.id != offer?.userId) && <p>Get in touch with {user.first_name} {user.last_name} </p>}
+                    {(authUser?.id != offer?.userId) && user.phone_number &&
                         <>
                             <Button className="bg-green-500 text-white">
                                 <a href={"whatsapp://send?abid=" + user.phone_number} target="_blank" className="flex items-center">

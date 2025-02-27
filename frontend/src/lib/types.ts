@@ -11,21 +11,24 @@ export interface User {
 }
 
 export interface Offer {
-    appliances: string[];
+    id: number;
+    title: string;
+    description: string | null | undefined;
+    longitude: number;
+    latitude: number;
     area: number;
-    bathroomCount: number;
-    bedCount: number;
-    createdAt: string; // or Date if you want to handle date objects
-    description: string;
-    floorNumber: number;
     offerType: string;
     offerPrice: number;
-    id: number;
     images: string[];
     isFurnished: boolean;
-    latitude: number | null | undefined;
-    longitude: number | null | undefined;
+    floorNumber: number;
     roomCount: number;
-    title: string;
+    bedCount: number;
+    bathroomCount: number;
+    appliances: string[];
+    createdAt: string; // or Date if you want to handle date objects
     updatedAt: string; // or Date if you want to handle date objects
+    userId: number;
+    likes: number;
+    is_liked: boolean;
 }
